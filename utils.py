@@ -207,7 +207,8 @@ def box_nms(bboxes, scores, threshold=0.5, mode='union'):
         ids = (ovr<=threshold).nonzero().squeeze()
         if ids.numel() == 0:
             break
-        #     
+        #ovr[0]是得分最高的prediction_box(order[0])和order[1]的iou
+        #ovr[0] <=> order[1]    
         order = order[ids+1]
     return torch.LongTensor(keep)
 
