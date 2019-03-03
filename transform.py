@@ -13,7 +13,7 @@ def resize(img, boxes, size, max_size=1000):
 
     Args:
       img: (PIL.Image) image to be resized.
-      boxes: (tensor) object boxes, sized [#ojb,4].
+      boxes: (tensor) object boxes, sized [#obj,4].
       size: (tuple or int)
         - if is tuple, resize image to the size.
         - if is int, resize the shorter side to the size while maintaining the aspect ratio.
@@ -24,12 +24,15 @@ def resize(img, boxes, size, max_size=1000):
       boxes: (tensor) resized boxes.
     '''
     w, h = img.size
+    # isinstance(object, classinfo):如果参数object是classinfo的实例或classinfo类的子类的一个实例， 返回True。
     if isinstance(size, int):
         size_min = min(w,h)
         size_max = max(w,h)
         sw = sh = float(size) / size_min
+        # 一般是sw更大
         if sw * size_max > max_size:
-            sw = sh = float(max_size) / size_max
+            sw = sh = float(max_size) / size_max # 最大的放缩比
+        # 四舍五入
         ow = int(w * sw + 0.5)
         oh = int(h * sh + 0.5)
     else:
@@ -56,15 +59,19 @@ def random_crop(img, boxes):
     success = False
     for attempt in range(10):
         area = img.size[0] * img.size[1]
+        # random.uniform(x, y)方法将随机生成一个实数，它在 [x,y] 范围内
         target_area = random.uniform(0.56, 1.0) * area
         aspect_ratio = random.uniform(3. / 4, 4. / 3)
 
         w = int(round(math.sqrt(target_area * aspect_ratio)))
         h = int(round(math.sqrt(target_area / aspect_ratio)))
 
+        # random() 方法返回随机生成的一个实数，它在[0,1)范围内
         if random.random() < 0.5:
             w, h = h, w
-
+        
+        # 如果生成的w,h比原图尺寸要小(符合裁剪要求)
+        # 在左上角区域，随机选定裁剪后图片的左上角
         if w <= img.size[0] and h <= img.size[1]:
             x = random.randint(0, img.size[0] - w)
             y = random.randint(0, img.size[1] - h)
@@ -72,15 +79,17 @@ def random_crop(img, boxes):
             break
 
     # Fallback
+    # 如果10次都没有成功，就将短边作为剪裁长度。
     if not success:
         w = h = min(img.size[0], img.size[1])
         x = (img.size[0] - w) // 2
         y = (img.size[1] - h) // 2
 
+    # 图像的左上角坐标为(x, y)，右下角坐标为(x+w, y+h)
     img = img.crop((x, y, x+w, y+h))
-    boxes -= torch.Tensor([x,y,x,y])
-    boxes[:,0::2].clamp_(min=0, max=w-1)
-    boxes[:,1::2].clamp_(min=0, max=h-1)
+    boxes -= torch.Tensor([x,y,x,y]) # 因为剪裁，修改bbox的坐标
+    boxes[:,0::2].clamp_(min=0, max=w-1) # 修改boxes的横坐标，使其位于crop后的图片内
+    boxes[:,1::2].clamp_(min=0, max=h-1) # 修改boxes的纵坐标，使其位于crop后的图片内
     return img, boxes
 
 def center_crop(img, boxes, size):
@@ -99,10 +108,11 @@ def center_crop(img, boxes, size):
     ow, oh = size
     i = int(round((h - oh) / 2.))
     j = int(round((w - ow) / 2.))
+    # 裁剪出图片中心的部分
     img = img.crop((j, i, j+ow, i+oh))
     boxes -= torch.Tensor([j,i,j,i])
-    boxes[:,0::2].clamp_(min=0, max=ow-1)
-    boxes[:,1::2].clamp_(min=0, max=oh-1)
+    boxes[:,0::2].clamp_(min=0, max=ow-1) # 修改boxes的横坐标，使其位于crop后的图片内
+    boxes[:,1::2].clamp_(min=0, max=oh-1) # 修改boxes的纵坐标，使其位于crop后的图片内
     return img, boxes
 
 def random_flip(img, boxes):
@@ -110,15 +120,16 @@ def random_flip(img, boxes):
 
     Args:
         img: (PIL Image) image to be flipped.
-        boxes: (tensor) object boxes, sized [#ojb,4].
+        boxes: (tensor) object boxes, sized [#obj,4].
 
     Returns:
         img: (PIL.Image) randomly flipped image.
         boxes: (tensor) randomly flipped boxes.
     '''
     if random.random() < 0.5:
-        img = img.transpose(Image.FLIP_LEFT_RIGHT)
+        img = img.transpose(Image.FLIP_LEFT_RIGHT) # 左右翻转
         w = img.width
+        # 变换左右翻转后bbox的x坐标
         xmin = w - boxes[:,2]
         xmax = w - boxes[:,0]
         boxes[:,0] = xmin

@@ -13,6 +13,7 @@ class FocalLoss(nn.Module):
         super(FocalLoss, self).__init__()
         self.num_classes = num_classes
 
+    # Focal loss主要是为了解决one-stage目标检测中正负样本比例严重失衡的问题。该损失函数降低了大量简单负样本在训练中所占的权重，也可理解为一种困难样本挖掘。
     def focal_loss(self, x, y):
         '''Focal loss.
 
@@ -23,6 +24,8 @@ class FocalLoss(nn.Module):
         Return:
           (tensor) focal loss.
         '''
+        # x:input
+        # t:target
         alpha = 0.25
         gamma = 2
 
@@ -31,9 +34,17 @@ class FocalLoss(nn.Module):
         t = Variable(t).cuda()  # [N,20]
 
         p = x.sigmoid()
+        # p,t 均为list, 相乘得到每一类的分数
+        # 如果t > 0, 表明该类别是实际类别, p越大, pt越大
+        # 如果t == 0, 表明该类别不是实际类别, p越小, 1-p越大, pt越大
         pt = p*t + (1-p)*(1-t)         # pt = p if t > 0 else 1-p
+        # alpha设置为0.25
+        # 正样本: w = alpha
+        # 负样本: w = 1- alpha
         w = alpha*t + (1-alpha)*(1-t)  # w = alpha if t > 0 else 1-alpha
+        # 对于正类样本而言，预测结果为0.95肯定是简单样本，所以(1-0.95)的gamma次方就会很小，这时损失函数值就变得更小，而预测概率为0.3的样本其损失相对很大。对于负类样本而言同样，预测0.1的结果应当远比预测0.4的样本损失值要小得多(0.1的gamma次方会很小)。所以更加关注于难以区分的样本。
         w = w * (1-pt).pow(gamma)
+        # 综上，最关注的是0.3-0.4的背景框(难样挖掘)。
         return F.binary_cross_entropy_with_logits(x, t, w, size_average=False)
 
     def focal_loss_alt(self, x, y):

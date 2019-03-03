@@ -61,6 +61,7 @@ class ListDataset(data.Dataset):
             self.boxes.append(torch.Tensor(box))
             self.labels.append(torch.LongTensor(label))
 
+    # 便于迭代对象(img)
     def __getitem__(self, idx):
         '''Load image.
 
@@ -80,7 +81,7 @@ class ListDataset(data.Dataset):
 
         boxes = self.boxes[idx].clone()
         labels = self.labels[idx]
-        size = self.input_size
+        size = self.input_size # 600
 
         # Data augmentation.
         if self.train:

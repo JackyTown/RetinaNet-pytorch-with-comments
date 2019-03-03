@@ -51,6 +51,7 @@ class DataEncoder:
             fm_w, fm_h = int(fm_size[0]), int(fm_size[1]) # 得到feature map的长宽  
             xy = meshgrid(fm_w,fm_h) + 0.5  # [fm_h*fm_w, 2]
             # meshgrid(x,y) 得到所有特征点的坐标
+            # + 0.5 由anchor的左上坐标得到anchor的中心坐标
             xy = (xy*grid_size).view(fm_h,fm_w,1,2).expand(fm_h,fm_w,9,2) 
             # x.expand()：扩展某个size为1的维度 扩展方式：自拷贝 
             # 9个不同形状的anchor，xy是相同的
